@@ -43,45 +43,59 @@ set(CMAKE_CXX_COMPILER ${AVR_CXX})
 set(AVR 1)
 
 
+
+
 ##########################################################################
-# some necessary tools and variables for AVR builds, which may not
-# defined yet
+# _check_default_defines
+#
+# Check that all the necessary tools and variables for AVR builds, which may
+# not defined yet
 # - AVR_UPLOADTOOL
 # - AVR_UPLOADTOOL_PORT
 # - AVR_PROGRAMMER
 # - AVR_MCU
 # - AVR_SIZE_ARGS
+#
+# Creates targets and dependencies for AVR toolchain, building an
+# executable. Calls add_executable with ELF file as target name, so
+# any link dependencies need to be using that target, e.g. for
+# target_link_libraries(<EXECUTABLE_NAME>-${AVR_MCU}.elf ...).
 ##########################################################################
-
-if (NOT AVR_UPLOADTOOL)
-    set (AVR_UPLOADTOOL avrdude CACHE STRING "Set default upload tool: avrdude")
-endif()
-
-if (NOT AVR_UPLOADTOOL_PORT) 
-    set (AVR_UPLOADTOOL_PORT CACHE STRING "Set default upload tool port: usb")
-endif()
-
-if (NOT AVR_PROGRAMMER)
-    set (AVR_PROGRAMMER avrispmkII
-            CACHE STRING "Set default programmer hardware model: avrispmkII")
-endif()
-
-if (NOT AVR_MCU) 
-    set (AVR_MCU atmega8 
-        CACHE STRING "Set default MCU: atmega8 (see 'avr-gcc --target-help' for valid values)")
-endif()
+function (_check_default_defines)
 
 
+    if (NOT AVR_UPLOADTOOL)
+        set (AVR_UPLOADTOOL avrdude CACHE STRING "Set default upload tool: avrdude")
+    endif()
+
+    if (NOT AVR_UPLOADTOOL_PORT) 
+        set (AVR_UPLOADTOOL_PORT CACHE STRING "Set default upload tool port: usb")
+    endif()
+
+    if (NOT AVR_PROGRAMMER)
+        set (AVR_PROGRAMMER avrispmkII
+                CACHE STRING "Set default programmer hardware model: avrispmkII")
+    endif()
+
+    if (NOT AVR_MCU) 
+        set (AVR_MCU atmega8 
+            CACHE STRING "Set default MCU: atmega8 (see 'avr-gcc --target-help' for valid values)")
+    endif()
 
 
 
-# prepare base flags for upload tool
-set(AVR_UPLOADTOOL_BASE_OPTIONS -p ${AVR_MCU} -c ${AVR_PROGRAMMER})
 
-# use AVR_UPLOADTOOL_BAUDRATE as baudrate for upload tool (if defined)
-if(AVR_UPLOADTOOL_BAUDRATE)
-    set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -b ${AVR_UPLOADTOOL_BAUDRATE})
-endif()
+
+    # prepare base flags for upload tool
+    set(AVR_UPLOADTOOL_BASE_OPTIONS -p ${AVR_MCU} -c ${AVR_PROGRAMMER})
+
+    # use AVR_UPLOADTOOL_BAUDRATE as baudrate for upload tool (if defined)
+    if(AVR_UPLOADTOOL_BAUDRATE)
+        set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -b ${AVR_UPLOADTOOL_BAUDRATE})
+    endif()
+endfunction()
+
+
 
 # file(GLOB SOURCES src/*.c)
 
@@ -98,11 +112,12 @@ endif()
 # target_link_libraries(<EXECUTABLE_NAME>-${AVR_MCU}.elf ...).
 ##########################################################################
 function(add_avr_executable EXECUTABLE_NAME)
-    message(STATUS ${ARGN})
+
     if(NOT ARGN)
         message(FATAL_ERROR "No source files given for ${EXECUTABLE_NAME}.")
     endif(NOT ARGN)
     
+    _check_default_defines()
     set(MCU_TYPE_FOR_FILENAME "")
 
     # set file names
@@ -120,8 +135,6 @@ function(add_avr_executable EXECUTABLE_NAME)
 
     # elf file
     add_executable(${elf_file} EXCLUDE_FROM_ALL ${ARGN})
-    
-
 
     set_target_properties(
         ${elf_file}
@@ -221,6 +234,10 @@ function(add_avr_library LIBRARY_NAME)
         message(FATAL_ERROR "No source files given for ${LIBRARY_NAME}.")
     endif()
 
+
+
+    _check_default_defines()
+
     set(lib_file ${LIBRARY_NAME}${MCU_TYPE_FOR_FILENAME})
     set (${LIBRARY_NAME}_LIB_TARGET ${elf_file} PARENT_SCOPE)
 
@@ -262,7 +279,8 @@ function(avr_target_link_libraries EXECUTABLE_TARGET)
    if(NOT ARGN)
       message(FATAL_ERROR "Nothing to link to ${EXECUTABLE_TARGET}.")
    endif()
-
+    
+   _check_default_defines()
    get_target_property(TARGET_LIST ${EXECUTABLE_TARGET} OUTPUT_NAME)
 
    foreach(TGT ${ARGN})

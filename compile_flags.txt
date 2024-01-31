@@ -1,0 +1,2 @@
+-I/opt/homebrew/Cellar/avr-gcc@9/9.4.0/avr/include
+-I./drone_lib
